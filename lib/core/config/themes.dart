@@ -39,7 +39,7 @@ class MetroMateTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: MetroMateAppColor.backgroundColor,
-      indicatorColor: MetroMateAppColor.primaryColor25,
+      indicatorColor: MetroMateAppColor.primaryColor,
       height: 80,
       labelTextStyle: WidgetStateTextStyle.resolveWith(
         (states) => TextStyle(
@@ -48,7 +48,7 @@ class MetroMateTheme {
               : FontWeight.normal,
           fontSize: 12,
           color: states.contains(WidgetState.selected)
-              ? MetroMateAppColor.primaryColor900
+              ? MetroMateAppColor.primaryColor
               : MetroMateAppColor.subTitleColor,
         ),
       ),
