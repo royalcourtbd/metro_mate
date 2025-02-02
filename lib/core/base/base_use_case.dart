@@ -63,6 +63,7 @@ abstract class BaseUseCase<T> {
   /// It then retrieves the right value from the `Either` object and returns it.
   /// If the right value is not present, it returns the [defaultValue] instead.
   ///
+  ///
   /// Use Case:
   /// This function is useful when you have a function that can return different types of values or errors.
   /// By using `Either`, you can handle both successful results and error cases in a unified way.
