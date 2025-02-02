@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:metro_mate/presentation/common/custom_app_bar.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        leading: SvgPicture.asset('assets/images/svg/app_logo.svg'),
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SvgPicture.asset('assets/images/svg/ic_logo.svg'),
-            Text('Metro Mate', style: TextStyle(fontSize: 12)),
-          ],
-        ),
+      appBar: CustomAppBar(
+        theme: theme,
+        title: 'Simplify Your MRT Journey',
       ),
     );
   }

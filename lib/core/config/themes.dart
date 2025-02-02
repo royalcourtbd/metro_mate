@@ -36,6 +36,11 @@ class MetroMateTheme {
         fontFamily: FontFamily.generalSans,
         height: 1.6,
       ),
+      bodySmall: TextStyle(
+        color: MetroMateAppColor.subTitleColor,
+        fontFamily: FontFamily.generalSans,
+        height: 1.6,
+      ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: MetroMateAppColor.backgroundColor,

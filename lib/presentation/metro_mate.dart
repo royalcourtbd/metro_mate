@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:metro_mate/core/config/themes.dart';
 import 'package:metro_mate/presentation/home/ui/home_page.dart';
 
 class MetroMate extends StatelessWidget {
@@ -18,6 +19,7 @@ class MetroMate extends StatelessWidget {
       builder: (context, child) => child!,
       title: 'Metro Mate',
       debugShowCheckedModeBanner: false,
+      theme: MetroMateTheme.lightTheme,
       home: HomePage(),
     );
   }
