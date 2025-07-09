@@ -7,7 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:metro_mate/metro_mate.dart';
+import 'package:metro_mate/features/metro_mate.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
