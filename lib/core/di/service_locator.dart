@@ -9,13 +9,19 @@
 //
 // To understand the Service Locator Pattern in more detail, you can refer to
 // the following resource: https://stackify.com/service-locator-pattern/.
+//3
 //
-// This pattern simplifies the process of replacing or adding dependencies.
+//
+//
+//ng dependencies.
 // Instead of modifying every object that relies on a particular dependency, we
 // only need to update the service locator itself. This centralization reduces
 // code changes and minimizes potential errors.
 import 'package:get_it/get_it.dart';
 import 'package:metro_mate/core/base/base_presenter.dart';
+import 'package:metro_mate/core/di/setup/service_setup.dart';
+import 'package:metro_mate/features/fare/di/fare_di.dart';
+import 'package:metro_mate/features/home/di/home_di.dart';
 
 final GetIt _serviceLocator = GetIt.instance;
 
@@ -50,32 +56,12 @@ class ServiceLocator {
   /// Ensures that all necessary dependencies are initialized before starting
   /// the application.
   static Future<void> setUp({bool startOnlyService = false}) async {
-    final ServiceLocator locator = ServiceLocator._();
-    await locator._setUpServices();
+    final ServiceSetup serviceSetup = ServiceSetup(_serviceLocator);
+    await serviceSetup.setup();
     if (startOnlyService) return;
-    await locator._setUpDataSources();
-    await locator._setUpRepositories();
-    await locator._setUpUseCase();
-    await locator._setUpPresenters();
+
+    //Feature Di setup
+    await HomeDi.setup(_serviceLocator);
+    await FareDi.setup(_serviceLocator);
   }
-
-  Future<void> _setUpFirebaseServices() async {}
-
-  Future<void> _setUpAudioService() async {}
-
-  Future<void> _setUpRepositories() async {}
-
-  Future<void> _setUpServices() async {
-    await _setUpAudioService();
-    await _setUpFirebaseServices();
-  }
-
-  Future<void> _setUpDataSources() async {}
-
-  Future<void> _setUpPresenters() async {
-    // _serviceLocator
-    //   ..registerFactory(() => loadPresenter(MainPresenter(locate())));
-  }
-
-  Future<void> _setUpUseCase() async {}
 }

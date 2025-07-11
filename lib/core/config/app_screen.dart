@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:metro_mate/core/utility/logger_utility.dart';
-import 'package:metro_mate/features/metro_mate.dart';
+import 'package:metro_mate/app/metro_mate.dart';
 
 /// Utility class for retrieving the screen dimensions of the device.
 ///

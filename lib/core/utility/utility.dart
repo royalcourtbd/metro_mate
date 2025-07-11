@@ -9,7 +9,7 @@ import 'package:metro_mate/core/static/constants.dart';
 import 'package:metro_mate/core/utility/logger_utility.dart';
 import 'package:metro_mate/core/utility/number_utility.dart';
 import 'package:metro_mate/core/utility/trial_utility.dart';
-import 'package:metro_mate/features/metro_mate.dart';
+import 'package:metro_mate/app/metro_mate.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 

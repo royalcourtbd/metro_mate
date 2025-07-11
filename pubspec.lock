@@ -429,6 +429,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  isolate_manager:
+    dependency: transitive
+    description:
+      name: isolate_manager
+      sha256: "0ff8401979b8101fec4019d7aedead083780fea152970799f0f3456dfe323e11"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.7.5"
+  isolate_manager_generator:
+    dependency: transitive
+    description:
+      name: isolate_manager_generator
+      sha256: "38e00f63891e39bcd27db34bf99f066f825f3dccaf866df860143f8a4e9c0541"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.13"
+  isolates_helper:
+    dependency: "direct main"
+    description:
+      name: isolates_helper
+      sha256: af34e284d2d74e527a62071d80105873bb5ca39966ff7f881d62af4bea44728e
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2"
   js:
     dependency: transitive
     description:

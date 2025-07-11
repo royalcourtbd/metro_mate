@@ -17,6 +17,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         padding: EdgeInsets.only(left: sixteenPx),
         child: SvgImage(SvgPath.appLogo),
       ),
+
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,

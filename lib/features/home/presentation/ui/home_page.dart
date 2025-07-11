@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:metro_mate/features/common_widgets/custom_app_bar.dart';
+import 'package:metro_mate/shared/widgets/custom_app_bar.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});

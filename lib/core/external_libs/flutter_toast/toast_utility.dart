@@ -1,6 +1,6 @@
 // toast_utility.dart
 import 'package:flutter/material.dart';
-import 'package:metro_mate/features/metro_mate.dart';
+import 'package:metro_mate/app/metro_mate.dart';
 
 import 'custom_toast.dart';
 import 'debouncer.dart';

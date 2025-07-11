@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:metro_mate/core/di/service_locator.dart';
-import 'package:metro_mate/features/metro_mate.dart';
+import 'package:metro_mate/app/metro_mate.dart';
 
 void main() {
   runZonedGuarded<Future<void>>(() async {
