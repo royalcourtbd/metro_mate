@@ -6,6 +6,7 @@ import signal
 import platform
 import subprocess
 import glob
+import re  # Added for git tag functionality
 
 # Colors for output
 RED = '\033[0;31m'
@@ -16,6 +17,10 @@ NC = '\033[0m'  # No Color
 MAGENTA = '\033[0;35m'  # Added for spinner
 CHECKMARK = '\033[32m✓\033[0m'  # Added for success checkmark
 CROSS = '\033[31m𐄂\033[0m'  # Added for failure cross
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
 def show_loading(description, process):
     """
@@ -46,18 +51,8 @@ def show_loading(description, process):
             print(f"\n{RED}Error Output:\n{stderr.decode()}{NC}")
         return False
 
-def display_apk_size():
-    """Function to display APK size"""
-    apk_files = glob.glob("build/app/outputs/flutter-apk/*.apk")
-    if apk_files:
-        for apk_path in apk_files:
-            size_bytes = os.path.getsize(apk_path)
-            size_mb = round(size_bytes / 1048576, 2)
-            print(f"{BLUE}APK: {os.path.basename(apk_path)} | Size: {size_mb} MB{NC}")
-    else:
-        print(f"{RED}APK file not found in build/app/outputs/flutter-apk/{NC}")
-
 def run_flutter_command(cmd_list, description):
+    """Run flutter command with loading animation"""
     process = subprocess.Popen(
         cmd_list,
         stdout=subprocess.PIPE,
@@ -79,6 +74,21 @@ def open_directory(directory_path):
     except Exception as e:
         print(f"Error opening directory: {e}")
         print(f"Please check: {directory_path}")
+
+def display_apk_size():
+    """Function to display APK size"""
+    apk_files = glob.glob("build/app/outputs/flutter-apk/*.apk")
+    if apk_files:
+        for apk_path in apk_files:
+            size_bytes = os.path.getsize(apk_path)
+            size_mb = round(size_bytes / 1048576, 2)
+            print(f"{BLUE}APK: {os.path.basename(apk_path)} | Size: {size_mb} MB{NC}")
+    else:
+        print(f"{RED}APK file not found in build/app/outputs/flutter-apk/{NC}")
+
+# ============================================================================
+# FLUTTER BUILD FUNCTIONS
+# ============================================================================
 
 def build_apk():
     """Build APK (Full Process)"""
@@ -192,6 +202,7 @@ def release_run():
         print(f"\n{RED}✗ APK built but install failed!{NC}")
 
 def install_apk():
+    """Install APK on connected device"""
     apk_files = glob.glob("build/app/outputs/flutter-apk/*.apk")
     if not apk_files:
         print(f"{RED}No APK found to install!{NC}")
@@ -232,6 +243,84 @@ def update_pods():
     
     print(f"\n{GREEN}✓ iOS pods updated successfully!{NC}")
 
+# ============================================================================
+# GIT TAG FUNCTIONS
+# ============================================================================
+
+def get_version_from_pubspec():
+    """Get the version from pubspec.yaml using regex"""
+    if os.path.isfile("pubspec.yaml"):
+        with open("pubspec.yaml", 'r') as file:
+            try:
+                content = file.read()
+                # Use regex to find the version field in pubspec.yaml
+                version_match = re.search(r'^version:\s*(.+)$', content, re.MULTILINE)
+                if version_match:
+                    version = version_match.group(1).strip()
+                    # Remove quotes if present and split by + to get only version number
+                    version = version.strip('"\'').split('+')[0]
+                    return version
+                else:
+                    print(f"{RED}Error: Could not find 'version' field in pubspec.yaml.{NC}")
+                    return None
+            except Exception as e:
+                print(f"{RED}Error: Could not read pubspec.yaml: {e}{NC}")
+                return None
+    else:
+        print(f"{RED}Error: pubspec.yaml not found in the current directory.{NC}")
+        print(f"Please run this command from the root of a Flutter project.")
+        return None
+
+def create_and_push_tag():
+    """Create git tag from pubspec version and push to remote"""
+    print(f"{YELLOW}Creating and pushing git tag...{NC}\n")
+    
+    # Get version from pubspec.yaml
+    version = get_version_from_pubspec()
+    if not version:
+        return False
+    
+    tag_name = f"v{version}"
+    
+    print(f"{BLUE}Version found: {version}{NC}")
+    print(f"{BLUE}Tag name: {tag_name}{NC}\n")
+    
+    # Check if tag already exists
+    try:
+        result = subprocess.run(["git", "tag", "-l", tag_name], 
+                              capture_output=True, text=True)
+        if result.stdout.strip():
+            print(f"{YELLOW}Warning: Tag {tag_name} already exists locally.{NC}")
+            user_input = input(f"Do you want to delete and recreate it? (y/N): ")
+            if user_input.lower() != 'y':
+                print(f"{YELLOW}Operation cancelled.{NC}")
+                return False
+            # Delete existing tag
+            subprocess.run(["git", "tag", "-d", tag_name])
+            print(f"{GREEN}Deleted existing local tag: {tag_name}{NC}")
+    except Exception as e:
+        print(f"{RED}Error checking existing tags: {e}{NC}")
+        return False
+    
+    # Create git tag
+    success = run_flutter_command(["git", "tag", tag_name], f"Creating tag {tag_name}...                             ")
+    if not success:
+        print(f"{RED}Failed to create git tag.{NC}")
+        return False
+    
+    # Push tag to remote
+    success = run_flutter_command(["git", "push", "-u", "origin", tag_name], f"Pushing tag to remote...                            ")
+    if not success:
+        print(f"{RED}Failed to push tag to remote.{NC}")
+        return False
+    
+    print(f"\n{GREEN}✓ Git tag {tag_name} created and pushed successfully!{NC}")
+    return True
+
+# ============================================================================
+# PAGE GENERATION FUNCTIONS
+# ============================================================================
+
 def create_page(page_name):
     """Create page structure"""
     print(f"{YELLOW}Creating page...{NC}\n")
@@ -252,6 +341,10 @@ def create_page(page_name):
         print("Make sure create_page.py exists in the current directory.")
         sys.exit(1)
 
+# ============================================================================
+# MAIN FUNCTIONS
+# ============================================================================
+
 def show_usage():
     """Show usage information"""
     print(f"{YELLOW}Usage: {sys.argv[0]} [command]{NC}")
@@ -265,6 +358,7 @@ def show_usage():
     print("  cleanup      Clean project and get dependencies")
     print("  release-run  Build & install release APK on connected device")
     print("  pod          Update iOS pods")
+    print("  tag          Create and push git tag from pubspec version")
     print("  page         Create page structure (usage: {sys.argv[0]} page <page_name>)")
     sys.exit(1)
 
@@ -297,6 +391,8 @@ def main():
         release_run()
     elif command == "pod":
         update_pods()
+    elif command == "tag":
+        create_and_push_tag()
     elif command == "page":
         if len(sys.argv) < 3:
             print(f"{RED}Error: Page name is required.{NC}")
