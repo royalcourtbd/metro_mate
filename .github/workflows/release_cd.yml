@@ -1,4 +1,4 @@
-name: Release APK
+name: Enhanced Release
 
 on:
   push:
@@ -7,10 +7,11 @@ on:
 
 permissions:
   contents: write
-  releases: write
+  actions: read
+  checks: write
 
 jobs:
-  build-and-release: # Changed from "release" to be more descriptive
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -49,16 +50,33 @@ jobs:
       - name: Build AAB
         run: flutter build appbundle --release --obfuscate --split-debug-info=./debug-info
 
-      - name: Get app info from pubspec
-        id: app_info
+      - name: Verify build outputs
         run: |
-          # Get version (improved parsing)
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | cut -d '+' -f 1)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Checking APK file:"
+          ls -la build/app/outputs/flutter-apk/
+          echo "Checking AAB file:"
+          ls -la build/app/outputs/bundle/release/
 
-          # Get app name (dynamic)
-          APP_NAME=$(grep '^name:' pubspec.yaml | sed 's/name: *//' | tr '_' ' ' | sed 's/\b\w/\U&/g')
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
+          # Verify files exist
+          if [ ! -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            echo "❌ APK file not found!"
+            exit 1
+          fi
+
+          if [ ! -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            echo "❌ AAB file not found!"
+            exit 1
+          fi
+
+          echo "✅ Both files found successfully"
+
+      - name: Get version and changelog
+        id: version
+        run: |
+          # Extract version correctly
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
 
           # Generate changelog from commits since last tag
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
@@ -71,38 +89,33 @@ jobs:
             echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
           fi
 
-      - name: Calculate file sizes
-        id: file_sizes
+      - name: Calculate APK size
+        id: apk_size
         run: |
           APK_SIZE=$(du -h build/app/outputs/flutter-apk/app-release.apk | cut -f1)
           AAB_SIZE=$(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)
           echo "APK_SIZE=$APK_SIZE" >> $GITHUB_OUTPUT
           echo "AAB_SIZE=$AAB_SIZE" >> $GITHUB_OUTPUT
+          echo "APK Size: $APK_SIZE"
+          echo "AAB Size: $AAB_SIZE"
 
-      - name: Format build date
-        id: build_date
-        run: |
-          # Convert to Bangladesh time and format
-          BUILD_DATE=$(TZ='Asia/Dhaka' date +'%d %B %Y - %l:%M%p' | sed 's/AM/am/g; s/PM/pm/g; s/  / /g')
-          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
-
-      - name: Create Release APK
-        uses: ncipollo/release-action@v1
+      - name: Create Enhanced Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag: ${{ github.ref_name }}
-          name: 🚇 ${{ steps.app_info.outputs.APP_NAME }} ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          name: 🚇 Metro Mate ${{ github.ref_name }}
           body: |
-            ## 🚇 ${{ steps.app_info.outputs.APP_NAME }} Release ${{ github.ref_name }}
+            ## 🚇 Metro Mate Release ${{ github.ref_name }}
 
             ### 📱 Download
 
             | File Type | Size | Description |
             |-----------|------|-------------|
-            | **APK** | ${{ steps.file_sizes.outputs.APK_SIZE }} | Direct install for Android devices |
-            | **AAB** | ${{ steps.file_sizes.outputs.AAB_SIZE }} | Google Play Store bundle |
+            | **APK** | ${{ steps.apk_size.outputs.APK_SIZE }} | Direct install for Android devices |
+            | **AAB** | ${{ steps.apk_size.outputs.AAB_SIZE }} | Google Play Store bundle |
 
             ### 🔄 What's Changed
-            ${{ steps.app_info.outputs.CHANGELOG }}
+            ${{ steps.version.outputs.CHANGELOG }}
 
             ### 📋 Installation Instructions
 
@@ -122,20 +135,21 @@ jobs:
 
             ---
 
-            **App Version:** ${{ steps.app_info.outputs.VERSION }}  
-            **Build Date:** ${{ steps.build_date.outputs.BUILD_DATE }}  
+            **App Version:** ${{ steps.version.outputs.VERSION }}  
+            **Build Date:** ${{ github.event.head_commit.timestamp }}  
             **Commit:** [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
           draft: false
           prerelease: false
           files: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
-          token: ${{ secrets.GITHUB_TOKEN }} # Added explicit token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.app_info.outputs.APP_NAME }}-release-${{ github.ref_name }}
+          name: metro-mate-release-${{ github.ref_name }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
