@@ -35,6 +35,17 @@ jobs:
       - name: Generate build files
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Get app info from pubspec
+        id: app_info
+        run: |
+          # Get version
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | cut -d '+' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+          # Get app name
+          APP_NAME=$(grep '^name:' pubspec.yaml | sed 's/name: *//' | tr '_' ' ' | sed 's/\b\w/\U&/g')
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
+
       - name: Analyze code
         run: flutter analyze
 
@@ -53,25 +64,32 @@ jobs:
         if: ${{ github.event.inputs.build_type == 'release' }}
         run: flutter build appbundle --release
 
+      - name: Format build date
+        id: build_date
+        run: |
+          # Convert to Bangladesh time and format
+          BUILD_DATE=$(TZ='Asia/Dhaka' date +'%d %B %Y - %l:%M%p' | sed 's/AM/am/g; s/PM/pm/g; s/  / /g')
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
+
       - name: Upload Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' && github.event.inputs.upload_artifacts == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: metro-mate-debug-apk
+          name: ${{ steps.app_info.outputs.APP_NAME }}-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Upload Release APK
         if: ${{ github.event.inputs.build_type == 'release' && github.event.inputs.upload_artifacts == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: metro-mate-release-apk
+          name: ${{ steps.app_info.outputs.APP_NAME }}-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload Release AAB
         if: ${{ github.event.inputs.build_type == 'release' && github.event.inputs.upload_artifacts == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: metro-mate-release-aab
+          name: ${{ steps.app_info.outputs.APP_NAME }}-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
 
       - name: Display APK size (Release)
@@ -79,15 +97,19 @@ jobs:
         run: |
           APK_SIZE=$(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')
           echo "### APK Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Name**: ${{ steps.app_info.outputs.APP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Version**: ${{ steps.app_info.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Type**: Release" >> $GITHUB_STEP_SUMMARY
           echo "- **APK Size**: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: ${{ steps.build_date.outputs.BUILD_DATE }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Display APK size (Debug)
         if: ${{ github.event.inputs.build_type == 'debug' }}
         run: |
           APK_SIZE=$(ls -lh build/app/outputs/flutter-apk/app-debug.apk | awk '{print $5}')
           echo "### APK Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Name**: ${{ steps.app_info.outputs.APP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Version**: ${{ steps.app_info.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Type**: Debug" >> $GITHUB_STEP_SUMMARY
           echo "- **APK Size**: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: ${{ steps.build_date.outputs.BUILD_DATE }}" >> $GITHUB_STEP_SUMMARY
