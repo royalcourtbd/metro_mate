@@ -3,7 +3,11 @@ name: Release APK
 on:
   push:
     tags:
-      - "v*.*.*" # triggers on semantic version tags like v1.0.0
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  releases: write
 
 jobs:
   build-and-release:
@@ -48,10 +52,9 @@ jobs:
           echo "App Version: $VERSION"
 
       - name: Create GitHub Release
-        id: create_release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v1
         with:
-          tag: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           name: Metro Mate ${{ github.ref_name }}
           body: |
             ## Metro Mate Release ${{ github.ref_name }}
@@ -71,16 +74,11 @@ jobs:
 
             **App Version**: ${{ steps.get_version.outputs.VERSION }}
             **Build Date**: ${{ github.event.head_commit.timestamp }}
-          draft: false
-          prerelease: false
-
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
           files: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
