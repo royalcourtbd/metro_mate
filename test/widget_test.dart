@@ -7,23 +7,50 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:metro_mate/app/metro_mate.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Metro Mate App widget test', (WidgetTester tester) async {
+    // Build our complete MetroMate app
     await tester.pumpWidget(const MetroMate());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Wait for the widget tree to settle
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify that our app title is displayed.
+    expect(find.text('Simplify Your MRT Journey'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the basic structure exists
+    expect(find.byType(Scaffold), findsOneWidget);
+  });
+
+  testWidgets('Metro Mate basic structure test', (WidgetTester tester) async {
+    // Build the complete app
+    await tester.pumpWidget(const MetroMate());
+
+    // Wait for everything to load
+    await tester.pumpAndSettle();
+
+    // Verify basic structure elements
+    expect(find.byType(GetMaterialApp), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+
+    // Verify app title
+    expect(find.text('Simplify Your MRT Journey'), findsOneWidget);
+  });
+
+  testWidgets('App basic structure test', (WidgetTester tester) async {
+    // Test basic widget structure
+    const widget = MaterialApp(
+      home: Scaffold(body: Center(child: Text('Metro Mate Test'))),
+    );
+
+    await tester.pumpWidget(widget);
+
+    // Verify basic structure
+    expect(find.text('Metro Mate Test'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
   });
 }

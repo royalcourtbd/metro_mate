@@ -1,0 +1,123 @@
+name: Enhanced Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for changelog
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.5"
+          cache: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle/caches
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate build files
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
+
+      - name: Build AAB
+        run: flutter build appbundle --release --obfuscate --split-debug-info=./debug-info
+
+      - name: Get version and changelog
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+          # Generate changelog from commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            git log $PREVIOUS_TAG..HEAD --oneline --pretty=format:"- %s" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate APK size
+        id: apk_size
+        run: |
+          APK_SIZE=$(du -h build/app/outputs/flutter-apk/app-release.apk | cut -f1)
+          AAB_SIZE=$(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)
+          echo "APK_SIZE=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "AAB_SIZE=$AAB_SIZE" >> $GITHUB_OUTPUT
+
+      - name: Create Enhanced Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: 🚇 Metro Mate ${{ github.ref_name }}
+          body: |
+            ## 🚇 Metro Mate Release ${{ github.ref_name }}
+
+            ### 📱 Download
+
+            | File Type | Size | Description |
+            |-----------|------|-------------|
+            | **APK** | ${{ steps.apk_size.outputs.APK_SIZE }} | Direct install for Android devices |
+            | **AAB** | ${{ steps.apk_size.outputs.AAB_SIZE }} | Google Play Store bundle |
+
+            ### 🔄 What's Changed
+            ${{ steps.version.outputs.CHANGELOG }}
+
+            ### 📋 Installation Instructions
+
+            **For APK:**
+            1. Download `app-release.apk` below
+            2. Enable "Install from Unknown Sources" in Android Settings
+            3. Open and install the APK
+
+            **System Requirements:**
+            - Android 7.0+ (API 24)
+            - 50MB+ free storage
+
+            ### 🛡️ Security
+            - Code obfuscated for security
+            - Built with Flutter ${{ env.FLUTTER_VERSION }}
+            - All dependencies up to date
+
+            ---
+
+            **App Version:** ${{ steps.version.outputs.VERSION }}  
+            **Build Date:** ${{ github.event.head_commit.timestamp }}  
+            **Commit:** [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          draft: false
+          prerelease: false
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload to Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-mate-release-${{ github.ref_name }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30

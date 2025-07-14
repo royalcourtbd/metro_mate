@@ -1,0 +1,41 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * 1" # Weekly on Monday 2 AM
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.5"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Dart dependency scan
+        run: dart pub deps --style=compact
+
+      - name: Check for known vulnerabilities
+        run: flutter pub audit
+
+      - name: Analyze for security issues
+        run: flutter analyze --write=analysis_output.txt
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: security-analysis-${{ github.sha }}
+          path: analysis_output.txt

@@ -1,0 +1,97 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "v*.*.*" # triggers on semantic version tags like v1.0.0
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.5"
+          cache: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle/caches
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate build files
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build release APK
+        run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
+
+      - name: Build release AAB
+        run: flutter build appbundle --release --obfuscate --split-debug-info=./debug-info
+
+      - name: Get app version from pubspec.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "App Version: $VERSION"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: Metro Mate ${{ github.ref_name }}
+          body: |
+            ## Metro Mate Release ${{ github.ref_name }}
+
+            ### What's New:
+            - New features and improvements
+            - Bug fixes and performance optimizations
+
+            ### Download:
+            - **APK**: Download the APK file below for Android devices
+            - **AAB**: For Google Play Store distribution
+
+            ### Installation:
+            1. Download the APK file
+            2. Enable "Unknown Sources" in your Android settings
+            3. Install the APK
+
+            **App Version**: ${{ steps.get_version.outputs.VERSION }}
+            **Build Date**: ${{ github.event.head_commit.timestamp }}
+          draft: false
+          prerelease: false
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-mate-apk-${{ github.ref_name }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload AAB as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-mate-aab-${{ github.ref_name }}
+          path: build/app/outputs/bundle/release/app-release.aab
