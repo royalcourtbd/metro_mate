@@ -1,4 +1,4 @@
-name: Enhanced Release
+name: Enhanced Release Pipeline
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   checks: write
 
 jobs:
-  release:
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -50,6 +50,7 @@ jobs:
       - name: Build AAB
         run: flutter build appbundle --release --obfuscate --split-debug-info=./debug-info
 
+      # Combined: Build verification from Code 1
       - name: Verify build outputs
         run: |
           echo "Checking APK file:"
@@ -70,13 +71,21 @@ jobs:
 
           echo "✅ Both files found successfully"
 
-      - name: Get version and changelog
-        id: version
+      # Improved: Better app info extraction from Code 2
+      - name: Get app info from pubspec
+        id: app_info
         run: |
-          # Extract version correctly
-          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          # Get version (improved parsing)
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | cut -d '+' -f 1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
+
+          # Get app name (dynamic) - fallback to repository name if not found
+          if grep -q '^name:' pubspec.yaml; then
+            APP_NAME=$(grep '^name:' pubspec.yaml | sed 's/name: *//' | tr '_' ' ' | sed 's/\b\w/\U&/g')
+          else
+            APP_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '_-' ' ' | sed 's/\b\w/\U&/g')
+          fi
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
 
           # Generate changelog from commits since last tag
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
@@ -89,8 +98,8 @@ jobs:
             echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
           fi
 
-      - name: Calculate APK size
-        id: apk_size
+      - name: Calculate file sizes
+        id: file_sizes
         run: |
           APK_SIZE=$(du -h build/app/outputs/flutter-apk/app-release.apk | cut -f1)
           AAB_SIZE=$(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)
@@ -99,23 +108,36 @@ jobs:
           echo "APK Size: $APK_SIZE"
           echo "AAB Size: $AAB_SIZE"
 
+      # Improved: Better date formatting with timezone support
+      - name: Format build date
+        id: build_date
+        run: |
+          # Convert to Bangladesh time and format (fallback to UTC if timezone not available)
+          if command -v timedatectl &> /dev/null; then
+            BUILD_DATE=$(TZ='Asia/Dhaka' date +'%d %B %Y - %l:%M%p' | sed 's/AM/am/g; s/PM/pm/g; s/  / /g')
+          else
+            BUILD_DATE=$(date -u +'%d %B %Y - %l:%M%p UTC' | sed 's/AM/am/g; s/PM/pm/g; s/  / /g')
+          fi
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
+
+      # Using ncipollo/release-action for better flexibility
       - name: Create Enhanced Release
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          name: 🚇 Metro Mate ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          name: 🚇 ${{ steps.app_info.outputs.APP_NAME }} ${{ github.ref_name }}
           body: |
-            ## 🚇 Metro Mate Release ${{ github.ref_name }}
+            ## 🚇 ${{ steps.app_info.outputs.APP_NAME }} Release ${{ github.ref_name }}
 
             ### 📱 Download
 
             | File Type | Size | Description |
             |-----------|------|-------------|
-            | **APK** | ${{ steps.apk_size.outputs.APK_SIZE }} | Direct install for Android devices |
-            | **AAB** | ${{ steps.apk_size.outputs.AAB_SIZE }} | Google Play Store bundle |
+            | **APK** | ${{ steps.file_sizes.outputs.APK_SIZE }} | Direct install for Android devices |
+            | **AAB** | ${{ steps.file_sizes.outputs.AAB_SIZE }} | Google Play Store bundle |
 
             ### 🔄 What's Changed
-            ${{ steps.version.outputs.CHANGELOG }}
+            ${{ steps.app_info.outputs.CHANGELOG }}
 
             ### 📋 Installation Instructions
 
@@ -135,22 +157,37 @@ jobs:
 
             ---
 
-            **App Version:** ${{ steps.version.outputs.VERSION }}  
-            **Build Date:** ${{ github.event.head_commit.timestamp }}  
+            **App Version:** ${{ steps.app_info.outputs.VERSION }}  
+            **Build Date:** ${{ steps.build_date.outputs.BUILD_DATE }}  
             **Commit:** [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
           draft: false
           prerelease: false
-          files: |
+          artifacts: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
+          removeArtifacts: false
 
       - name: Upload to Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: metro-mate-release-${{ github.ref_name }}
+          name: ${{ steps.app_info.outputs.APP_NAME }}-release-${{ github.ref_name }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      # Additional: Notify on success/failure
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "✅ Release ${{ github.ref_name }} created successfully!"
+          echo "📱 APK Size: ${{ steps.file_sizes.outputs.APK_SIZE }}"
+          echo "📦 AAB Size: ${{ steps.file_sizes.outputs.AAB_SIZE }}"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Release pipeline failed for ${{ github.ref_name }}"
+          echo "Please check the logs above for details."
