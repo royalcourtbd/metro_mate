@@ -1,4 +1,4 @@
-name: Enhanced Release
+name: Release CD
 
 on:
   push:
@@ -86,7 +86,7 @@ jobs:
           BUILD_DATE=$(TZ='Asia/Dhaka' date +'%d %B %Y - %l:%M%p' | sed 's/AM/am/g; s/PM/pm/g; s/  / /g')
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
 
-      - name: Create Enhanced Release
+      - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.ref_name }}
