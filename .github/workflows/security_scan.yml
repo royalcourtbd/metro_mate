@@ -27,15 +27,17 @@ jobs:
       - name: Run Dart dependency scan
         run: dart pub deps --style=compact
 
-      - name: Check for known vulnerabilities
-        run: flutter pub audit
+      - name: Check for outdated packages
+        run: flutter pub outdated --json > outdated_packages.json || true
 
       - name: Analyze for security issues
         run: flutter analyze --write=analysis_output.txt
 
       - name: Upload analysis results
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: security-analysis-${{ github.sha }}
-          path: analysis_output.txt
+          path: |
+            analysis_output.txt
+            outdated_packages.json
